@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>这是一个满分男 · 姐妹默契游戏</title>
+<style>
+  :root{
+    --bg:#fff5f8;
+    --card:#ffffff;
+    --primary:#e75480;
+    --primary-dark:#c83e6a;
+    --primary-soft:#ffe3ee;
+    --text:#2a2230;
+    --muted:#8a7e88;
+    --line:#f1dde6;
+    --danger:#e23b4e;
+    --ok:#2fa36b;
+    --gold:#d99a2b;
+    --shadow:0 10px 30px rgba(231,84,128,.12);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.6;
+    padding-bottom:calc(40px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px;}
+  header.hero{
+    background:linear-gradient(135deg,#ff7eb3 0%,#e75480 55%,#a64bd6 100%);
+    color:#fff;padding:30px 18px 26px;text-align:center;
+    border-bottom-left-radius:28px;border-bottom-right-radius:28px;
+    box-shadow:var(--shadow);
+  }
+  header.hero h1{margin:0;font-size:26px;letter-spacing:.5px;font-weight:800;}
+  header.hero p{margin:8px 0 0;font-size:14px;opacity:.92;font-weight:500;}
+  .tag{display:inline-block;margin-top:12px;background:rgba(255,255,255,.2);
+    padding:5px 14px;border-radius:999px;font-size:12.5px;font-weight:600;}
+
+  section{margin:22px 0;}
+  .sec-title{font-size:15px;font-weight:800;color:var(--primary-dark);
+    margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+  .sec-title svg{width:20px;height:20px;flex:0 0 auto;}
+
+  .draw-card{background:var(--card);border-radius:var(--radius);padding:22px;
+    box-shadow:var(--shadow);text-align:center;}
+  .draw-btn{
+    appearance:none;border:none;cursor:pointer;width:100%;min-height:56px;
+    border-radius:16px;background:linear-gradient(135deg,#ff7eb3,#e75480);
+    color:#fff;font-size:19px;font-weight:800;letter-spacing:1px;
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    box-shadow:0 8px 18px rgba(231,84,128,.35);transition:transform .08s;
+  }
+  .draw-btn:active{transform:scale(.97);}
+  .draw-btn svg{width:26px;height:26px;}
+  .hint{margin:12px 0 0;font-size:13px;color:var(--muted);}
+
+  /* result */
+  .result{margin-top:18px;display:none;}
+  .result.show{display:block;animation:pop .35s ease;}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98);}to{opacity:1;transform:none;}}
+  .result-card{background:linear-gradient(180deg,#fff,#fff7fb);
+    border:2px solid var(--primary-soft);border-radius:var(--radius);
+    padding:22px 20px;position:relative;overflow:hidden;text-align:center;}
+  .badge{font-size:13px;font-weight:700;color:var(--primary-dark);
+    background:var(--primary-soft);padding:4px 12px;border-radius:999px;display:inline-block;}
+  .big{font-size:64px;font-weight:900;line-height:1.1;margin:10px 0 2px;
+    background:linear-gradient(135deg,#e75480,#a64bd6);-webkit-background-clip:text;
+    background-clip:text;color:transparent;}
+  .big.joker{font-size:54px;}
+  .score-name{font-size:20px;font-weight:800;margin:0 0 6px;}
+  .teaser{font-size:15px;font-weight:700;color:var(--primary-dark);margin:12px 0 4px;}
+  .host{font-size:15px;color:var(--text);margin:6px 0 0;}
+  .host .hl{color:var(--primary-dark);font-weight:800;}
+
+  /* history */
+  .history{margin-top:16px;}
+  .history .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:999px;
+    padding:5px 12px;font-size:13px;font-weight:700;color:var(--primary-dark);}
+  .chip.jk{color:var(--danger);border-color:#f6c9d0;}
+  .reset-link{background:none;border:none;color:var(--muted);font-size:12.5px;
+    cursor:pointer;text-decoration:underline;padding:4px 0 0;}
+
+  /* case library */
+  .cat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .cat-btn{appearance:none;cursor:pointer;border:2px solid var(--line);
+    background:var(--card);border-radius:16px;padding:16px 8px;min-height:88px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    font-size:15px;font-weight:800;color:var(--text);transition:transform .08s,border-color .15s;}
+  .cat-btn:active{transform:scale(.97);}
+  .cat-btn .emo{font-size:26px;}
+  .cat-btn.trash{border-color:#f6c9d0;}
+  .cat-btn.trash .sub{color:var(--danger);}
+  .cat-btn.normal .sub{color:var(--muted);}
+  .cat-btn.tasty .sub{color:var(--gold);}
+  .cat-btn .sub{font-size:11.5px;font-weight:600;color:var(--muted);}
+
+  .case-panel{margin-top:14px;display:none;}
+  .case-panel.show{display:block;animation:pop .3s ease;}
+  .case-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .case-head h3{margin:0;font-size:16px;font-weight:800;}
+  .close-x{appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+    padding:6px 12px;font-size:13px;cursor:pointer;color:var(--muted);min-height:36px;}
+  .case-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;}
+  .case-list li{background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start;}
+  .case-list li .n{flex:0 0 auto;width:22px;height:22px;border-radius:50%;
+    background:var(--primary-soft);color:var(--primary-dark);font-weight:800;
+    font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+
+  footer{text-align:center;color:var(--muted);font-size:12px;margin:28px 0 6px;}
+
+  @media (max-width:768px){
+    header.hero h1{font-size:22px;}
+    .big{font-size:54px;}
+    .wrap{padding:0 12px;}
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>这是一个满分男</h1>
+  <p>不是评价男人，是测你到底有多懂你的姐妹 💅</p>
+  <span class="tag">姐妹默契大考验 · 抽到分数，猜她心里的那个男长啥样</span>
+</header>
+
+<div class="wrap">
+
+  <!-- 功能1：随机抽取 -->
+  <section>
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#e75480" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.4" fill="#e75480" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="#e75480" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="#e75480" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="#e75480" stroke="none"/></svg>
+      功能一 · 随机抽取
+    </div>
+    <div class="draw-card">
+      <button class="draw-btn" id="drawBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.4" fill="#fff" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="#fff" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="#fff" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="#fff" stroke="none"/></svg>
+        抽一个
+      </button>
+      <p class="hint">说「抽一个 / 开始 / 来一个 / 随机一下」都行 → 从 1~10 和 🃏Joker 里随机抽</p>
+
+      <div class="result" id="result">
+        <div class="result-card">
+          <span class="badge" id="rBadge">🎰 抽到了</span>
+          <div class="big" id="rBig">8</div>
+          <div class="score-name" id="rName">8分男</div>
+          <div class="teaser" id="rTeaser"></div>
+          <p class="host" id="rHost"></p>
+        </div>
+      </div>
+
+      <div class="history" id="historyBox" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:700;color:var(--muted);">本场已抽</span>
+          <button class="reset-link" id="resetBtn">清空本场</button>
+        </div>
+        <div class="chips" id="historyChips"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 功能2：案例库 -->
+  <section>
+    <div class="sec-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#e75480" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"/><path d="M4 9h16"/><path d="M9 5v14"/></svg>
+      功能二 · 案例库（找灵感用，不替你打分）
+    </div>
+    <div class="cat-row">
+      <button class="cat-btn trash" data-cat="trash"><span class="emo">🗑️</span>垃圾<span class="sub">雷区 · 下头</span></button>
+      <button class="cat-btn normal" data-cat="normal"><span class="emo">🙂</span>普通<span class="sub">正常 · 不心动</span></button>
+      <button class="cat-btn tasty" data-cat="tasty"><span class="emo">🍷</span>美味<span class="sub">心动 · 高分素材</span></button>
+    </div>
+
+    <div class="case-panel" id="casePanel">
+      <div class="case-head">
+        <h3 id="caseTitle"></h3>
+        <button class="close-x" id="closeCase">收起</button>
+      </div>
+      <ul class="case-list" id="caseList"></ul>
+    </div>
+  </section>
+
+  <footer>游戏规则：只测默契，不评价男人 · 分数全是「她心里的分」，由姐妹本人判准不准</footer>
+</div>
+
+<script>
+  // ===== 11 个抽取结果 =====
+  const OUTCOMES = ['1','2','3','4','5','6','7','8','9','10','Joker'];
+
+  // ===== 案例库（全量，按分类完整展示）=====
+  const CASES = {
+    trash: [
+      "长得很帅，但特别爱贬低女生。",
+      "年薪很高，但默认女生应该照顾他的生活起居。",
+      "很会说情话，但同时和三个女生暧昧。",
+      "非常有钱，但控制欲极强。",
+      "对你特别好，但对服务员、外卖员态度极差。",
+      "很聪明，但总喜欢纠正你、证明自己比你厉害。",
+      "长得是你的理想型，但极度妈宝。",
+      "特别黏人，恨不得随时知道你在哪里。",
+      "很有事业心，但觉得恋爱会影响自己，所以几乎不投入。",
+      "经济条件很好，但每一笔钱都要和你算得清清楚楚。",
+      "非常浪漫，但情绪极其不稳定。",
+      "说自己「比较传统」，实际意思是希望女生听他的。",
+      "很会照顾你，但会以此要求你服从他。",
+      "和前任保持非常亲密的关系，还觉得你不应该介意。",
+      "朋友很多，但其中大部分都是暧昧对象。",
+      "外表成熟稳重，实际上遇到问题永远逃避。",
+      "特别爱讲「女生还是应该找个条件好的男人」。",
+      "很有钱，但完全没有自己的生活能力。",
+      "每次吵架都冷暴力，几天不理人。",
+      "对你很好，但极其嫌弃你的朋友和家人。",
+      "自己双标，却要求伴侣做到他自己做不到的事情。",
+      "总把「我养你」挂在嘴边，实际上希望你失去经济独立。",
+      "喜欢拿你和其他女生比较。",
+      "自己不愿意成长，却要求伴侣不断变好。",
+      "认为恋爱中的隐私不存在，理所当然要求查看手机。",
+      "一遇到冲突就说「你想太多了」。",
+      "很会制造浪漫，但承诺过的事情几乎从来做不到。",
+      "认为做家务、带孩子天然就是女生的责任。",
+      "在别人面前非常爱面子，私下却把负面情绪全部发泄给伴侣。",
+      "一直说自己「不喜欢被束缚」，实际意思是只想享受恋爱，不想承担责任。"
+    ],
+    normal: [
+      "工作稳定，性格温和，生活规律。",
+      "长相普通，但很会做饭。",
+      "不太会说情话，但会记得你的习惯。",
+      "有自己的兴趣爱好，不会整天黏着你。",
+      "收入不错，但工作比较忙。",
+      "情绪稳定，遇到问题愿意沟通。",
+      "很喜欢运动，生活方式比较健康。",
+      "会主动规划约会，但偶尔有点无聊。",
+      "对朋友很好，人缘不错。",
+      "有自己的事业目标，而且执行力不错。",
+      "不抽烟不酗酒，生活习惯比较干净。",
+      "很尊重你的个人空间。",
+      "不太浪漫，但答应你的事情基本都会做到。",
+      "会做家务，而且不会把家务当成「帮你」。",
+      "有一点社恐，但熟悉之后很好相处。",
+      "比较理性，遇到事情喜欢先解决问题。",
+      "经济条件一般，但对未来有明确规划。",
+      "长得不是你的理想型，但越看越顺眼。",
+      "很独立，有自己的朋友和生活。",
+      "性格很好，但聊天能力比较一般。",
+      "生活习惯规律，比较自律。",
+      "工作能力不错，但事业野心不算特别强。",
+      "喜欢旅行，愿意一起探索新的地方。",
+      "会主动承担一些生活琐事。",
+      "对伴侣比较忠诚，也比较重视长期关系。",
+      "有一点慢热，但熟悉后比较放松。",
+      "家庭关系比较正常，有基本的边界感。",
+      "有自己的审美和兴趣，不太随大流。",
+      "不太会制造惊喜，但重要日子基本记得。",
+      "遇到事情比较靠谱，但偶尔缺少浪漫细胞。"
+    ],
+    tasty: [
+      "很聪明，而且能和你进行高质量的长时间聊天。",
+      "事业能力很强，但不会把伴侣当成事业的牺牲品。",
+      "长得刚好是你的类型，而且本人非常有分寸感。",
+      "很有钱，但不会用钱控制你，反而希望你拥有自己的经济能力。",
+      "情绪稳定，遇到矛盾不会冷暴力，会认真和你讨论。",
+      "对外理性克制，对你却非常温柔。",
+      "有自己的事业、朋友和生活，但会主动经营你们的关系。",
+      "记得你随口说过的小事，而且会在很久之后突然做到。",
+      "很会照顾人，但不会把「照顾你」变成控制你。",
+      "有很强的责任感，关键时刻非常可靠。",
+      "尊重女性，对性别、婚姻、家庭分工有成熟的看法。",
+      "很有幽默感，能让你在一起的时候一直笑。",
+      "长得帅、身材好，而且本人完全没有因此产生优越感。",
+      "非常有行动力，你说过一次的事情他会直接记住并解决。",
+      "愿意为关系付出，但不会失去自己的边界。",
+      "在外面很成熟，在你面前却会露出一点幼稚和可爱。",
+      "很会表达自己的需求，也愿意认真听你的需求。",
+      "对你的事业和成长真正感兴趣，而不是只希望你围着他转。",
+      "发生冲突时不会急着赢，而是更在意你们怎么把事情解决掉。",
+      "你可以非常放心地把脆弱的一面交给他，因为他不会利用你的弱点。",
+      "很有判断力，不容易被外界舆论带着走。",
+      "有自己的原则，但不会把自己的原则强加给伴侣。",
+      "能给你安全感，但不会让你产生被管理的感觉。",
+      "很会规划未来，但也尊重你对未来的想法。",
+      "在你需要的时候行动力极强，不需要你反复提醒。",
+      "对自己的情绪负责，不会把伴侣当成情绪垃圾桶。",
+      "很会欣赏你，而不是只在意你能为他提供什么。",
+      "既有能力又有松弛感，不会把「成功」变成一种压迫感。",
+      "对你有明显的偏爱，但不会失去基本的理智和边界。",
+      "你和他在一起的时候，可以明显感觉到「我是和一个成熟的成年人谈恋爱」。"
+    ]
+  };
+
+  const CAT_META = {
+    trash:  {title:"🗑️ 垃圾案例库",  sub:"雷区 · 严重减分项 · 下头行为"},
+    normal: {title:"🙂 普通案例库",  sub:"正常优点缺点 · 不特别心动也不下头"},
+    tasty:  {title:"🍷 美味案例库",  sub:"容易心动 · 高分男人的素材"}
+  };
+
+  // ===== 主持人口吻 =====
+  const TEASERS_NUM = [
+    "压力来了姐妹。",
+    "这个你要是猜不中，姐妹白认识了。",
+    "很好，开始暴露你们到底有多熟了。",
+    "答案有点危险，但你先说。",
+    "哈哈哈哈考验默契的时候到了。",
+    "这一抽下去，真假姐妹立见。"
+  ];
+  let lastTeaser = -1;
+  function pickTeaser(){
+    let i;
+    do { i = Math.floor(Math.random()*TEASERS_NUM.length); } while(i===lastTeaser && TEASERS_NUM.length>1);
+    lastTeaser = i;
+    return TEASERS_NUM[i];
+  }
+
+  // ===== DOM =====
+  const drawBtn   = document.getElementById('drawBtn');
+  const resultEl  = document.getElementById('result');
+  const rBadge    = document.getElementById('rBadge');
+  const rBig      = document.getElementById('rBig');
+  const rName     = document.getElementById('rName');
+  const rTeaser   = document.getElementById('rTeaser');
+  const rHost     = document.getElementById('rHost');
+  const historyBox= document.getElementById('historyBox');
+  const historyChips = document.getElementById('historyChips');
+  const resetBtn  = document.getElementById('resetBtn');
+  const caseBtns  = document.querySelectorAll('.cat-btn');
+  const casePanel = document.getElementById('casePanel');
+  const caseTitle = document.getElementById('caseTitle');
+  const caseList  = document.getElementById('caseList');
+  const closeCase = document.getElementById('closeCase');
+
+  let history = [];
+
+  function draw(){
+    const out = OUTCOMES[Math.floor(Math.random()*OUTCOMES.length)];
+    resultEl.classList.add('show');
+
+    if(out === 'Joker'){
+      rBadge.textContent = '🃏 Joker';
+      rBig.textContent = '🃏';
+      rBig.classList.add('joker');
+      rName.textContent = '0分男';
+      rTeaser.textContent = '恭喜，今天抽到的是全场反面教材。';
+      rHost.innerHTML = '来。<br>根据你对她的了解，找一个她绝对会觉得<b class="hl">下头</b>的男人。<br>可以自己想，也可以打开「🗑️ 垃圾」案例库。';
+      pushHistory('Joker', true);
+    } else {
+      const n = out;
+      rBadge.textContent = '🎰 抽到了：' + n;
+      rBig.textContent = n;
+      rBig.classList.remove('joker');
+      rName.textContent = n + '分男';
+      rTeaser.textContent = pickTeaser();
+      rHost.innerHTML = '现在请根据你对她的了解，<br>找一个你认为她会打 <b class="hl">'+n+'分</b> 的男人。<br>不是你的'+n+'分，是<b class="hl">她的'+n+'分</b>。<br>可以自己描述，也可以打开案例库找灵感。';
+      pushHistory(n, false);
+    }
+    // 把手机递给下一个姐妹的小提示
+    rHost.innerHTML += '<br><span style="color:var(--muted);font-size:13px;">轮到谁了？把手机递给下一个姐妹～</span>';
+    resultEl.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  function pushHistory(label, isJoker){
+    history.push({label, isJoker});
+    historyBox.style.display = 'block';
+    historyChips.innerHTML = history.map(h =>
+      '<span class="chip'+(h.isJoker?' jk':'')+'">'+(h.isJoker?'🃏':'')+h.label+'</span>'
+    ).join('');
+  }
+
+  drawBtn.addEventListener('click', draw);
+  resetBtn.addEventListener('click', ()=>{
+    history = [];
+    historyBox.style.display = 'none';
+    historyChips.innerHTML = '';
+  });
+
+  // ===== 案例库：选中分类 → 完整展示全部 =====
+  function showCases(cat){
+    const meta = CAT_META[cat];
+    caseTitle.textContent = meta.title;
+    caseList.innerHTML = CASES[cat].map((c,i)=>
+      '<li><span class="n">'+(i+1)+'</span><span>'+c+'</span></li>'
+    ).join('');
+    casePanel.classList.add('show');
+    casePanel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  caseBtns.forEach(b=> b.addEventListener('click', ()=> showCases(b.dataset.cat)));
+  closeCase.addEventListener('click', ()=> casePanel.classList.remove('show'));
+</script>
+</body>
+</html>
