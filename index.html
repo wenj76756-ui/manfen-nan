@@ -146,9 +146,13 @@
   .gen-btn:active{transform:scale(.98);}
   .card-preview{margin-top:18px;display:none;text-align:center;}
   .card-preview img{width:100%;max-width:340px;border-radius:16px;box-shadow:var(--shadow);}
-  .save-btn{display:inline-block;margin-top:12px;background:var(--primary-dark);color:#fff;
-    text-decoration:none;padding:11px 22px;border-radius:999px;font-size:15px;font-weight:800;}
+  .card-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;}
+  .save-btn{display:inline-block;background:var(--primary-dark);color:#fff;
+    text-decoration:none;padding:11px 22px;border-radius:999px;font-size:15px;font-weight:800;
+    border:2px solid var(--primary-dark);cursor:pointer;}
   .save-btn:active{opacity:.85;}
+  .copy-btn{background:#fff;color:var(--primary-dark);}
+  .copy-btn:active{background:var(--primary-soft);}
   .save-tip{font-size:12.5px;color:var(--muted);margin:8px 0 0;}
 
   footer{text-align:center;color:var(--muted);font-size:12px;margin:28px 0 6px;line-height:1.9;}
@@ -234,13 +238,16 @@
     <div class="share-box">
       <div class="share-score">本场抽到：<b id="shareScore">还没抽</b></div>
       <label for="descInput">描述内容（可点上方案例库「＋」加入，也可自己编）</label>
-      <textarea id="descInput" placeholder="例如：很有钱但不会用钱控制你，反而希望你拥有自己的经济能力…"></textarea>
+      <textarea id="descInput" placeholder="例如：8分男，我觉得她会吃那种很有钱但不会用钱控制你的类型…"></textarea>
       <div class="share-actions">
         <button class="gen-btn" id="genCardBtn">🎴 生成分享卡片</button>
       </div>
       <div class="card-preview" id="cardPreview">
         <img id="cardImg" alt="分享卡片预览">
-        <div><a class="save-btn" id="saveCardBtn" download="满分男分享卡.png">💾 保存图片</a></div>
+        <div class="card-actions">
+          <a class="save-btn" id="saveCardBtn" download="满分男分享卡.png">💾 保存图片</a>
+          <button class="save-btn copy-btn" id="copyCardBtn" type="button">📋 复制图片</button>
+        </div>
         <p class="save-tip">手机长按图片即可保存 / 转发到朋友圈·小红书</p>
       </div>
     </div>
@@ -255,6 +262,26 @@
 <script>
   // ===== 11 个抽取结果 =====
   const OUTCOMES = ['1','2','3','4','5','6','7','8','9','10','Joker'];
+
+  // ===== 分享卡片插画（按分数区间）=====
+  const BASE = 'https://wenj76756-ui.github.io/manfen-nan/';
+  const CARD_IMGS = {
+    joker:   BASE + 'joker.png',     // 🃏 0分男
+    low:     BASE + 'low.png',       // 1-3分
+    normal:  BASE + 'normal.png',    // 4-6分
+    high:    BASE + 'high.png',      // 7-9分
+    perfect: BASE + 'perfect.png'    // 10分
+  };
+  let IMG_CACHE = {};
+  function preloadImages(){
+    Object.entries(CARD_IMGS).forEach(([k,src])=>{
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = src;
+      IMG_CACHE[k] = img;
+    });
+  }
+  preloadImages();
 
   // ===== 案例库（全量，按分类完整展示）=====
   const CASES = {
@@ -401,9 +428,20 @@
   const cardPreview = document.getElementById('cardPreview');
   const cardImg   = document.getElementById('cardImg');
   const saveCardBtn = document.getElementById('saveCardBtn');
+  const copyCardBtn = document.getElementById('copyCardBtn');
 
   let history = [];
   let currentScore = null; // '8' / 'Joker'
+  let lastCanvas = null;
+
+  function scoreToBucket(n){
+    if(n==='Joker') return 'joker';
+    const v = parseInt(n,10);
+    if(v<=3) return 'low';
+    if(v<=6) return 'normal';
+    if(v<=9) return 'high';
+    return 'perfect';
+  }
 
   function draw(){
     const out = OUTCOMES[Math.floor(Math.random()*OUTCOMES.length)];
@@ -483,7 +521,7 @@
   caseBtns.forEach(b=> b.addEventListener('click', ()=> showCases(b.dataset.cat)));
   closeCase.addEventListener('click', ()=> casePanel.classList.remove('show'));
 
-  // ===== 生成分享卡片（Canvas，零依赖）=====
+  // ===== Canvas 分享卡片 =====
   function roundRect(ctx,x,y,w,h,r){
     ctx.beginPath();
     ctx.moveTo(x+r,y);
@@ -510,71 +548,87 @@
     lines.forEach((l,i)=> ctx.fillText(l, x, y+i*lineHeight));
     return lines;
   }
+  function drawImageCover(ctx,img,x,y,w,h){
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    const ratio = Math.max(w/iw, h/ih);
+    const sw = w/ratio, sh = h/ratio;
+    const sx = (iw-sw)/2, sy = (ih-sh)/2;
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+  }
 
-  function generateCard(){
-    if(!currentScore){ alert('先点上方「抽一个」抽个分数，再生成卡片哦～'); return; }
+  function paintCard(bgImg){
+    const score = currentScore;
     const raw = (descInput.value||'').trim();
-    if(!raw){ alert('描述内容写点啥嘛～可以点案例库「＋」加入，也可以自己编'); return; }
-
     const sentence = '这是一个满分男，' + raw;
     const W=1080, H=1350;
     const canvas = document.createElement('canvas');
     canvas.width=W; canvas.height=H;
+    lastCanvas = canvas;
     const ctx = canvas.getContext('2d');
 
-    // 背景渐变
-    const bg = ctx.createLinearGradient(0,0,W,H);
-    bg.addColorStop(0,'#ff8fb8'); bg.addColorStop(0.55,'#e75480'); bg.addColorStop(1,'#a64bd6');
-    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // 底图插画（cover）
+    if(bgImg && bgImg.complete && bgImg.naturalWidth){
+      drawImageCover(ctx, bgImg, 0, 0, W, H);
+    } else {
+      const bg = ctx.createLinearGradient(0,0,W,H);
+      bg.addColorStop(0,'#ff8fb8'); bg.addColorStop(0.55,'#e75480'); bg.addColorStop(1,'#a64bd6');
+      ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    }
 
-    // 装饰圆点
-    ctx.fillStyle='rgba(255,255,255,0.18)';
-    [[120,180,40],[965,250,28],[150,1160,24],[935,1130,42],[540,80,16]].forEach(([x,y,r])=>{
-      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-    });
+    // 顶部暗角（让标题清晰）
+    const topScrim = ctx.createLinearGradient(0,0,0,320);
+    topScrim.addColorStop(0,'rgba(0,0,0,0.35)');
+    topScrim.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=topScrim; ctx.fillRect(0,0,W,320);
 
-    // 内卡片
-    const m=70;
-    roundRect(ctx,m,m,W-2*m,H-2*m,44);
-    ctx.fillStyle='#fff7fb'; ctx.fill();
-    ctx.lineWidth=3; ctx.strokeStyle='rgba(231,84,128,0.25)'; ctx.stroke();
-
-    const cx=W/2;
     // 标题
     ctx.textAlign='center';
-    const tg = ctx.createLinearGradient(300,0,780,0);
-    tg.addColorStop(0,'#e75480'); tg.addColorStop(1,'#a64bd6');
-    ctx.fillStyle=tg;
-    ctx.font='800 66px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.fillText('这是一个满分男', cx, 235);
+    ctx.font='800 62px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.shadowColor='rgba(0,0,0,0.35)'; ctx.shadowBlur=14; ctx.shadowOffsetX=0; ctx.shadowOffsetY=2;
+    ctx.fillStyle='#fff';
+    ctx.fillText('这是一个满分男', W/2, 115);
+    ctx.shadowColor='transparent';
 
     // 分数徽章
-    const by=445, br=120;
-    const sg = ctx.createLinearGradient(cx-br,by-br,cx+br,by+br);
-    sg.addColorStop(0,'#ff7eb3'); sg.addColorStop(1,'#a64bd6');
-    ctx.beginPath(); ctx.arc(cx,by,br,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
+    const isJoker = (score==='Joker');
+    const scoreText = isJoker ? '🃏 0分男' : score+'分男';
+    ctx.font='800 28px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    const pad = 18, hBadge = 44;
+    const tw = ctx.measureText(scoreText).width + pad*2;
+    const bx = (W-tw)/2, by = 150;
+    roundRect(ctx,bx,by,tw,hBadge,hBadge/2);
+    const bg = ctx.createLinearGradient(bx,by,bx+tw,by+hBadge);
+    bg.addColorStop(0,'#ff7eb3'); bg.addColorStop(1,'#a64bd6');
+    ctx.fillStyle=bg; ctx.fill();
     ctx.fillStyle='#fff';
-    const isJoker = (currentScore==='Joker');
-    const scoreLabel = isJoker ? '🃏' : currentScore;
-    ctx.font='900 '+(isJoker?'108px':'150px')+' -apple-system,"PingFang SC",sans-serif';
-    ctx.fillText(scoreLabel, cx, by + (isJoker?38:52));
-    // 分数名
-    ctx.fillStyle='#c83e6a';
-    ctx.font='800 38px -apple-system,"PingFang SC",sans-serif';
-    ctx.fillText(isJoker?'0分男 · 下头版':currentScore+'分男', cx, by+br+58);
+    ctx.fillText(scoreText, W/2, by+30);
 
-    // 描述正文
+    // 底部整体暗角（让面板和水印清晰）
+    const botScrim = ctx.createLinearGradient(0,H-460,0,H);
+    botScrim.addColorStop(0,'rgba(0,0,0,0)');
+    botScrim.addColorStop(0.35,'rgba(0,0,0,0.25)');
+    botScrim.addColorStop(1,'rgba(0,0,0,0.55)');
+    ctx.fillStyle=botScrim; ctx.fillRect(0,H-460,W,460);
+
+    // 描述面板
+    const mx=55, my=H-410, mw=W-mx*2, mh=330, r=28;
+    roundRect(ctx,mx,my,mw,mh,r);
+    ctx.fillStyle='rgba(255,255,255,0.93)'; ctx.fill();
+
+    // 描述文字
     ctx.textAlign='left';
     ctx.fillStyle='#2a2230';
-    ctx.font='600 40px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
-    const maxW = W-2*m-90;
-    wrapText(ctx, sentence, m+45, by+br+150, maxW, 58, 9);
+    ctx.font='600 38px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    wrapText(ctx, sentence, mx+34, my+66, mw-68, 54, 5);
 
-    // 水印
+    // 底部水印
     ctx.textAlign='center';
-    ctx.fillStyle='rgba(138,126,136,0.95)';
-    ctx.font='500 30px -apple-system,"PingFang SC",sans-serif';
-    ctx.fillText('小红书@妈不在家', cx, H-m-38);
+    ctx.font='500 30px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.shadowColor='rgba(0,0,0,0.45)'; ctx.shadowBlur=10; ctx.shadowOffsetX=0; ctx.shadowOffsetY=1;
+    ctx.fillStyle='#fff';
+    ctx.fillText('小红书@妈不在家', W/2, H-38);
+    ctx.shadowColor='transparent';
 
     // 输出
     const dataURL = canvas.toDataURL('image/png');
@@ -583,7 +637,45 @@
     cardPreview.style.display='block';
     cardPreview.scrollIntoView({behavior:'smooth', block:'nearest'});
   }
+
+  function generateCard(){
+    if(!currentScore){ alert('先点上方「抽一个」抽个分数，再生成卡片哦～'); return; }
+    const raw = (descInput.value||'').trim();
+    if(!raw){ alert('描述内容写点啥嘛～可以点案例库「＋」加入，也可以自己编'); return; }
+
+    const bucket = scoreToBucket(currentScore);
+    const img = IMG_CACHE[bucket];
+    if(img && img.complete && img.naturalWidth){
+      paintCard(img);
+    } else if(img){
+      img.onload = ()=> paintCard(img);
+      img.onerror = ()=> paintCard(null);
+      // 若缓存图片还没加载完，等待 150ms 后尝试一次兜底
+      setTimeout(()=>{ if(!cardPreview.style.display || cardPreview.style.display==='none') paintCard(null); }, 150);
+    } else {
+      paintCard(null);
+    }
+  }
+
   genCardBtn.addEventListener('click', generateCard);
+
+  // 复制图片到剪贴板
+  copyCardBtn.addEventListener('click', async ()=>{
+    if(!lastCanvas){ alert('先生成卡片再复制哦～'); return; }
+    lastCanvas.toBlob(async (blob)=>{
+      if(!blob){ alert('复制失败，请直接保存图片'); return; }
+      try{
+        if(navigator.clipboard && navigator.clipboard.write){
+          await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+          alert('图片已复制到剪贴板，去微信/小红书/备忘录直接粘贴即可～');
+        } else {
+          throw new Error('no clipboard');
+        }
+      } catch(e){
+        alert('复制失败，手机可长按上方图片保存，电脑可点「保存图片」');
+      }
+    }, 'image/png');
+  });
 </script>
 </body>
 </html>
